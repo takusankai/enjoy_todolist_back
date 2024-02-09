@@ -3,3 +3,4 @@ docker-compose.yml
 dockerfile
 .env
 __pycache__
+todoapp.db
