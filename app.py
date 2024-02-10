@@ -9,19 +9,18 @@ app = Flask(__name__)
 CORS(app)
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///Todo.db'
 
-cred = credentials.Certificate("path/to/firebase-adminsdk.json")
-firebase_admin.initialize_app(cred)
+
 
 db = SQLAlchemy(app)
 
 class Todo(db.Model):
-    id = db.Column(db.Integer, primary_key=True)
+    uid = db.Column(db.Integer, primary_key=True, autoincrement=True)
     TodoName = db.Column(db.String(50), nullable=False)
     CreateTime = db.Column(db.string(50), nullable=False)
     ClearTime = db.Column(db.string(50), nullable=False)
 
 class User(UserMixin, db.Model):
-    id = db.Column(db.Integer, primary_key=True)
+    uid = db.Column(db.Integer, primary_key=True)
     username = db.Column(db.String(30), unique=True)
     createday = db.Column(db.String(30))
 
@@ -31,8 +30,18 @@ todos = []
 # Firebaseからユーザー情報を検証し、データベースに追加する処理
 @app.route('/login', methods=['POST'])
 def login():
+    uid = request.json.get('uid')
+    username = request.json.get('username')
     
-    pass
+    # Firebaseでの認証情報検証は省略
+    
+    user = User.query.filter_by(id=uid).first()
+    if user is None:
+        user = User(id=uid, username=username)
+        db.session.add(user)
+        db.session.commit()
+    
+    return jsonify({'message': 'Logged in successfully', 'user': {'id': uid, 'username': username}})
 
 # Todoリストの画面を表示します。
 @app.route('/')
