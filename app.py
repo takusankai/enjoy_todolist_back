@@ -1,14 +1,15 @@
 from flask import Flask, render_template, request, redirect, url_for, jsonify
 from flask_sqlalchemy import SQLAlchemy
-from flask_cors import CORS
+from flask_cors import CORS, cross_origin
 # datetime モジュールのインポート
 from datetime import datetime  
 
 
 
 app = Flask(__name__)
-CORS(app)
-app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///Todo.db'
+CORS(app, resources={r"/*": {"origins": "http://localhost:3000"}}, supports_credentials=True)
+app.config['CORS_HEADERS'] = 'Content-Type'
+app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///todo.db'
 
 
 
@@ -17,7 +18,7 @@ db = SQLAlchemy(app)
 class Todo(db.Model):
     id = db.Column(db.Integer, primary_key=True)
      # User モデルの uid に対する外部キー
-    user_id = db.Column(db.Integer, db.ForeignKey('user.uid'), nullable=False) 
+    user_id = db.Column(db.String, db.ForeignKey('user.uid'), nullable=False) 
     TodoName = db.Column(db.String(50), nullable=False)
     CreateTime = db.Column(db.String(50), nullable=False)
     ClearTime = db.Column(db.String(50), nullable=False)
@@ -25,15 +26,18 @@ class Todo(db.Model):
     
 
 class User(db.Model):
-    uid = db.Column(db.Integer, primary_key=True)
+    uid = db.Column(db.String, primary_key=True)
     username = db.Column(db.String(30), unique=True)
     createday = db.Column(db.String(30))
     # User と Todo のリレーションを設定
     todos = db.relationship('Todo', backref='user', lazy=True)
 
+with app.app_context():
+    db.create_all()
 
 # Firebaseからユーザー情報を検証し、新規ユーザーの時新しくデータベースに追加する処理
 @app.route('/login', methods=['GET','POST'])
+@cross_origin()
 def login():
     uid = request.json.get('uid')
     username = request.json.get('username')
@@ -50,6 +54,7 @@ def login():
 
 #ログインしたユーザーのTodoリストを返す処理
 @app.route('/todos', methods=['GET'])
+@cross_origin()
 def get_todos():
     uid = request.args.get('uid')
     is_completed = request.args.get('is_completed', type=bool)  # 達成状態のフィルタリング用
@@ -62,6 +67,7 @@ def get_todos():
 
 #自分以外のユーザーの最新10件の達成リストを返す処理
 @app.route('/recent_todos', methods=['GET'])
+@cross_origin()
 def get_recent_todos():
     uid = request.args.get('uid', type=int)  # 自分のユーザーIDを取得
     if uid:
@@ -76,10 +82,12 @@ def get_recent_todos():
 
 
 #追加されたTodoをデータベースに入れる処理
-@app.route('/add_todo', methods=['POST'])
+@app.route('/add_todo', methods=['GET', 'POST'])
+@cross_origin()
 def add_todo():
-    uid = request.json.get('uid')
-    todo_name = request.json.get('todo')
+    data = request.get_json()
+    uid = data.get('uid')
+    todo_name = data.get('todo')
     create_time = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
     
     new_todo = Todo(user_id=uid, TodoName=todo_name, CreateTime=create_time, ClearTime='')
@@ -88,10 +96,15 @@ def add_todo():
 
     # 追加後のTodoリストを取得
     updated_todos = Todo.query.filter_by(user_id=uid).all()
+
+    # dbの要素をprintで全て表示
+    print(Todo.query.all())
+
     return jsonify([{'id': todo.id, 'TodoName': todo.TodoName, 'CreateTime': todo.CreateTime, 'ClearTime': todo.ClearTime} for todo in updated_todos])
 
 #達成ボタンが押された時クリア時間をデータベースに登録する
 @app.route('/clear_todo/<int:todo_id>', methods=['PUT'])
+@cross_origin()
 def clear_todo(todo_id):
     todo = Todo.query.get(todo_id)
     if todo:
@@ -104,6 +117,7 @@ def clear_todo(todo_id):
     
 #自身の達成済みTodoリストをデータベースから取ってくる処理    
 @app.route('/completed_todos', methods=['GET'])
+@cross_origin()
 def get_completed_todos():
     uid = request.args.get('uid', type=int)  # ユーザーIDをクエリパラメータから取得
     if not uid:
@@ -121,6 +135,7 @@ def get_completed_todos():
 
 # Todoが更新されたときの処理です。
 @app.route('/edit_todo/<int:todo_id>', methods=['PUT'])
+@cross_origin()
 def edit_todo(todo_id):
     todo = Todo.query.get(todo_id)
     if not todo:
@@ -139,6 +154,7 @@ def edit_todo(todo_id):
 
 # Todoが削除されたときの処理です。
 @app.route("/delete/<int:todo_id>", methods=["POST"])
+@cross_origin()
 def delete(todo_id):
     # URLから渡されたIDに基づいて、該当するTodoをデータベースから取得
     todo = Todo.query.filter_by(id=todo_id).first()
@@ -150,4 +166,4 @@ def delete(todo_id):
 
 # アプリを実行する処理です。
 if __name__ == '__main__':
-    app.run(debug=True)
+    app.run(port=5001, debug=True)
