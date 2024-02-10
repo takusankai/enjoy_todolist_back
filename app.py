@@ -1,10 +1,38 @@
-from flask import Flask, render_template, request, redirect, url_for
+from flask import Flask, render_template, request, redirect, url_for,  jsonify
+from flask_sqlalchemy import SQLAlchemy
+from flask_cors import CORS
+import firebase_admin
+from firebase_admin import credentials, auth
 
 
 app = Flask(__name__)
+CORS(app)
+app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///Todo.db'
+
+cred = credentials.Certificate("path/to/firebase-adminsdk.json")
+firebase_admin.initialize_app(cred)
+
+db = SQLAlchemy(app)
+
+class Todo(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    TodoName = db.Column(db.String(50), nullable=False)
+    CreateTime = db.Column(db.string(50), nullable=False)
+    ClearTime = db.Column(db.string(50), nullable=False)
+
+class User(UserMixin, db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    username = db.Column(db.String(30), unique=True)
+    createday = db.Column(db.String(30))
 
 # 仮のTodoリストを作成します
 todos = []
+
+# Firebaseからユーザー情報を検証し、データベースに追加する処理
+@app.route('/login', methods=['POST'])
+def login():
+    
+    pass
 
 # Todoリストの画面を表示します。
 @app.route('/')
