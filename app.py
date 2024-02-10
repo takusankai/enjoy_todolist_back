@@ -4,14 +4,10 @@ from flask_cors import CORS, cross_origin
 # datetime モジュールのインポート
 from datetime import datetime  
 
-
-
 app = Flask(__name__)
 CORS(app, resources={r"/*": {"origins": "http://localhost:3000"}}, supports_credentials=True)
 app.config['CORS_HEADERS'] = 'Content-Type'
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///todo.db'
-
-
 
 db = SQLAlchemy(app)
 
@@ -24,7 +20,6 @@ class Todo(db.Model):
     ClearTime = db.Column(db.String(50), nullable=False)
     is_completed = db.Column(db.Boolean, default=False)  # 達成状態を示す新しいフィールド
     
-
 class User(db.Model):
     uid = db.Column(db.String, primary_key=True)
     username = db.Column(db.String(30), unique=True)
@@ -51,7 +46,6 @@ def login():
         db.session.commit()
     return jsonify({'message': 'Logged in successfully', 'user': {'id': uid, 'username': username}})
 
-
 #ログインしたユーザーのTodoリストを返す処理
 @app.route('/todos', methods=['GET'])
 @cross_origin()
@@ -63,7 +57,6 @@ def get_todos():
     else:
         todos = Todo.query.filter_by(user_id=uid).all()
     return jsonify([{'id': todo.id, 'TodoName': todo.TodoName, 'CreateTime': todo.CreateTime, 'ClearTime': todo.ClearTime, 'isCompleted': todo.is_completed} for todo in todos])
-
 
 #自分以外のユーザーの最新10件の達成リストを返す処理
 @app.route('/recent_todos', methods=['GET'])
@@ -78,8 +71,6 @@ def get_recent_todos():
         recent_todos = Todo.query.filter(Todo.is_completed == True).order_by(Todo.ClearTime.desc()).limit(10).all()
 
     return jsonify([{'id': todo.id, 'TodoName': todo.TodoName, 'CreateTime': todo.CreateTime, 'ClearTime': todo.ClearTime, 'userId': todo.user_id,'username': User.username} for todo in recent_todos])
-
-
 
 #追加されたTodoをデータベースに入れる処理
 @app.route('/add_todo', methods=['GET', 'POST'])
@@ -132,7 +123,6 @@ def get_completed_todos():
         'isCompleted': todo.is_completed
     } for todo in completed_todos])
 
-
 # Todoが更新されたときの処理です。
 @app.route('/edit_todo/<int:todo_id>', methods=['PUT'])
 @cross_origin()
@@ -150,8 +140,6 @@ def edit_todo(todo_id):
     updated_todos = Todo.query.filter_by(user_id=todo.user_id, is_completed=False).all()
     return jsonify([{'id': item.id, 'TodoName': item.TodoName, 'CreateTime': item.CreateTime, 'ClearTime': item.ClearTime, 'isCompleted': item.is_completed} for item in updated_todos])
 
-
-
 # Todoが削除されたときの処理です。
 @app.route("/delete/<int:todo_id>", methods=["POST"])
 @cross_origin()
@@ -163,7 +151,6 @@ def delete(todo_id):
     # 変更をデータベースにコミット
     db.session.commit()
 
-
 # アプリを実行する処理です。
 if __name__ == '__main__':
-    app.run(port=5001, debug=True)
+    app.run(debug=True)
