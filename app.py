@@ -71,7 +71,7 @@ def get_recent_todos():
         # ユーザーIDが指定されていない場合は、全ユーザーの達成されたTodo項目から最新10件を取得
         recent_todos = Todo.query.filter(Todo.is_completed == True).order_by(Todo.ClearTime.desc()).limit(10).all()
 
-    return jsonify([{'id': todo.id, 'TodoName': todo.TodoName, 'CreateTime': todo.CreateTime, 'ClearTime': todo.ClearTime, 'userId': todo.user_id} for todo in recent_todos])
+    return jsonify([{'id': todo.id, 'TodoName': todo.TodoName, 'CreateTime': todo.CreateTime, 'ClearTime': todo.ClearTime, 'userId': todo.user_id,'username': User.username} for todo in recent_todos])
 
 
 
