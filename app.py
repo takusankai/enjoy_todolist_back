@@ -1,8 +1,9 @@
-from flask import Flask, render_template, request, redirect, url_for,  jsonify
+from flask import Flask, render_template, request, redirect, url_for, jsonify
 from flask_sqlalchemy import SQLAlchemy
 from flask_cors import CORS
-import firebase_admin
-from firebase_admin import credentials, auth
+# datetime モジュールのインポート
+from datetime import datetime  
+
 
 
 app = Flask(__name__)
@@ -14,72 +15,96 @@ app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///Todo.db'
 db = SQLAlchemy(app)
 
 class Todo(db.Model):
-    uid = db.Column(db.Integer, primary_key=True, autoincrement=True)
+    id = db.Column(db.Integer, primary_key=True)
+     # User モデルの uid に対する外部キー
+    user_id = db.Column(db.Integer, db.ForeignKey('user.uid'), nullable=False) 
     TodoName = db.Column(db.String(50), nullable=False)
-    CreateTime = db.Column(db.string(50), nullable=False)
-    ClearTime = db.Column(db.string(50), nullable=False)
+    CreateTime = db.Column(db.String(50), nullable=False)
+    ClearTime = db.Column(db.String(50), nullable=False)
+    
 
-class User(UserMixin, db.Model):
+class User(db.Model):
     uid = db.Column(db.Integer, primary_key=True)
     username = db.Column(db.String(30), unique=True)
     createday = db.Column(db.String(30))
+    # User と Todo のリレーションを設定
+    todos = db.relationship('Todo', backref='user', lazy=True)
 
-# 仮のTodoリストを作成します
-todos = []
 
-# Firebaseからユーザー情報を検証し、データベースに追加する処理
-@app.route('/login', methods=['POST'])
+# Firebaseからユーザー情報を検証し、新規ユーザーの時新しくデータベースに追加する処理
+@app.route('/login', methods=['GET','POST'])
 def login():
     uid = request.json.get('uid')
     username = request.json.get('username')
     
     # Firebaseでの認証情報検証は省略
     
-    user = User.query.filter_by(id=uid).first()
+    user = User.query.filter_by(uid=uid).first()
     if user is None:
-        user = User(id=uid, username=username)
+        user = User(uid=uid, username=username)
         db.session.add(user)
         db.session.commit()
-    
     return jsonify({'message': 'Logged in successfully', 'user': {'id': uid, 'username': username}})
 
-# Todoリストの画面を表示します。
-@app.route('/')
-def index():
-    return render_template('index.html', todos=todos)
 
-# 追加されたTodoをTodoリストに加えます。
-@app.route('/add', methods=['POST'])
+#ログインしたユーザーのTodoリストを返す処理
+@app.route('/todos', methods=['GET'])
+def get_todos():
+    uid = request.args.get('uid')
+    # user_id を使用して Todo 項目を検索
+    todos = Todo.query.filter_by(user_id=uid).all()
+    return jsonify([{'uid': todo.id, 'TodoName': todo.TodoName, 'CreateTime': todo.CreateTime, 'ClearTime': todo.ClearTime} for todo in todos])
+
+#最新10件のデータを返す処理
+@app.route('/recent_todos', methods=['GET','POST'])
+def get_recent_todos():
+    recent_todos = Todo.query.order_by(Todo.CreateTime.desc()).limit(10).all()
+    return jsonify([{'id': todo.id, 'TodoName': todo.TodoName, 'CreateTime': todo.CreateTime, 'ClearTime': todo.ClearTime} for todo in recent_todos])
+
+
+#追加されたTodoをデータベースに入れる処理
+@app.route('/add_todo', methods=['POST'])
 def add_todo():
-    todo = request.form.get('todo')
-    todos.append(todo)
-    return redirect(url_for('index'))
+    uid = request.json.get('uid')
+    todo_name = request.json.get('todo')
+    # 現在の時間を取得
+    create_time = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+    
+    new_todo = Todo(user_id=uid, TodoName=todo_name, CreateTime=create_time, ClearTime='')
+    db.session.add(new_todo)
+    db.session.commit()
+    
+    return jsonify({'message': 'Todo added successfully'})
+
+#達成ボタンが押された時クリア時間をデータベースに登録する
+@app.route('/clear_todo/<int:todo_id>', methods=['PUT'])
+def clear_todo(todo_id):
+    todo = Todo.query.get(todo_id)
+    if todo:
+        todo.ClearTime = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+        db.session.commit()
+        return jsonify({'message': 'Todo cleared time successfully'})
+    else:
+        return jsonify({'message': 'Todo not found'}), 404
+
+
 
 # Todoの編集画面を表示します。
-@app.route('/edit/<int:todo_id>')
-def edit_todo(todo_id):
-    # Todoがあるときは編集画面に、そうではないときはTodoリストへ画面遷移します。
-    if 1 <= todo_id <= len(todos):
-        return render_template('edit.html', todo=todos[todo_id - 1], todo_id=todo_id)
-    else:
-        return redirect(url_for('index'))
+
 
 # Todoが更新されたときの処理です。
-@app.route('/update/<int:todo_id>', methods=['POST'])
-def update_todo(todo_id):
-    # 変更されたTodoがある場合はTodoリストに追加する。
-    if 1 <= todo_id <= len(todos):
-        todo = request.form.get('todo')
-        todos[todo_id - 1] = todo
-    return redirect(url_for('index'))
+
 
 # Todoが削除されたときの処理です。
-@app.route('/delete/<int:todo_id>')
-def delete_todo(todo_id):
-    # Todoがあるときは削除する。
-    if 1 <= todo_id <= len(todos):
-        del todos[todo_id - 1]
-    return redirect(url_for('index'))
+@app.route("/delete/<int:todo_id>", methods=["POST"])
+def delete(todo_id):
+    # URLから渡されたIDに基づいて、該当するTodoをデータベースから取得
+    todo = Todo.query.filter_by(id=todo_id).first()
+    # 取得したTodoをデータベースセッションから削除
+    db.session.delete(todo)
+    # 変更をデータベースにコミット
+    db.session.commit()
+
 
 # アプリを実行する処理です。
 if __name__ == '__main__':
