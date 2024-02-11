@@ -9,6 +9,7 @@ CORS(app, resources={r"/*": {"origins": "http://localhost:3000"}}, supports_cred
 app.config['CORS_HEADERS'] = 'Content-Type'
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///todo2.db'
 
+
 db = SQLAlchemy(app)
 
 class Todo(db.Model):
