@@ -80,16 +80,23 @@ def add_todo():
     key = data.get('key')
     uid = data.get('uid')
     todo_name = data.get('todo')
+    todo_id = data.get('todo_id')
+    print("uid", uid, "todo_name", todo_name, "id", todo_id)
     create_time = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-    if todo_name != '':
-        new_todo = Todo(id=key, user_id=uid, TodoName=todo_name, CreateTime=create_time, ClearTime='')
+   
+    # ""でなければデータベースに追加
+    if todo_name != "":
+        new_todo = Todo(id=todo_id, user_id=uid, TodoName=todo_name, CreateTime=create_time, ClearTime='')
         db.session.add(new_todo)
         db.session.commit()
-
+        print("Todo added successfully")
+    else:
+        print('TodoName is empty')
 
     # 追加後のTodoリストを取得
     user_todos = Todo.query.filter_by(user_id=uid).all()
     print(user_todos)
+    
     if user_todos == []:
         return jsonify({'message': 'Nothing'})
     else:
@@ -97,16 +104,24 @@ def add_todo():
         return jsonify([{'id': todo.id, 'TodoName': todo.TodoName, 'CreateTime': todo.CreateTime, 'ClearTime': todo.ClearTime} for todo in user_todos])
 
 #達成ボタンが押された時クリア時間をデータベースに登録する
-@app.route('/clear_todo/<int:todo_id>', methods=['PUT'])
+@app.route('/achieve_todo', methods=['PUT'])
 @cross_origin()
-def clear_todo(todo_id):
-    todo = Todo.query.get(todo_id)
+def clear_todo():
+    data = request.get_json()
+    todo_id = data.get('todo_id')
+    print("todo_id", todo_id)
+    if not todo_id:
+        return jsonify({'message': 'Todo id is required'}), 400
+    todo = Todo.query.filter_by(id=todo_id).first()  # データベースからTodoオブジェクトを取得
+
     if todo:
         todo.is_completed = True
         todo.ClearTime = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
         db.session.commit()
+        print("Todo completed successfully", todo.ClearTime)
         return jsonify({'message': 'Todo completed successfully'})
     else:
+        print("Todo not found")
         return jsonify({'message': 'Todo not found'}), 404
     
 #自身の達成済みTodoリストをデータベースから取ってくる処理    
