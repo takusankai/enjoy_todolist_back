@@ -78,7 +78,6 @@ def get_recent_todos():
 @cross_origin()
 def add_todo():
     data = request.get_json()
-    key = data.get('key')
     uid = data.get('uid')
     todo_name = data.get('todo')
     todo_id = data.get('todo_id')
