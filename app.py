@@ -88,16 +88,13 @@ def add_todo():
 
 
     # 追加後のTodoリストを取得
-    updated_todos = Todo.query.filter_by(user_id=uid).all()
-    print(updated_todos)
-    if updated_todos == []:
-        new_todo = Todo(id=key,user_id=uid, TodoName='test', CreateTime=create_time, ClearTime='')
-        db.session.add(new_todo)
-        db.session.commit()
-        updated_todos = Todo.query.filter_by(user_id=uid).all()
-    print(Todo.query.all())
-
-    return jsonify([{'id': todo.id, 'TodoName': todo.TodoName, 'CreateTime': todo.CreateTime, 'ClearTime': todo.ClearTime} for todo in updated_todos])
+    user_todos = Todo.query.filter_by(user_id=uid).all()
+    print(user_todos)
+    if user_todos == []:
+        return jsonify({'message': 'Nothing'})
+    else:
+        print(Todo.query.all())
+        return jsonify([{'id': todo.id, 'TodoName': todo.TodoName, 'CreateTime': todo.CreateTime, 'ClearTime': todo.ClearTime} for todo in user_todos])
 
 #達成ボタンが押された時クリア時間をデータベースに登録する
 @app.route('/clear_todo/<int:todo_id>', methods=['PUT'])
