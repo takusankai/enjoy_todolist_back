@@ -7,7 +7,7 @@ from datetime import datetime
 app = Flask(__name__)
 CORS(app, resources={r"/*": {"origins": "http://localhost:3000"}}, supports_credentials=True)
 app.config['CORS_HEADERS'] = 'Content-Type'
-app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///todo.db'
+app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///todo2.db'
 
 db = SQLAlchemy(app)
 
@@ -77,12 +77,13 @@ def get_recent_todos():
 @cross_origin()
 def add_todo():
     data = request.get_json()
+    key = data.get('key')
     uid = data.get('uid')
     todo_name = data.get('todo')
     todo_id = data.get('todo_id')
     print("uid", uid, "todo_name", todo_name, "id", todo_id)
     create_time = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-    
+   
     # ""でなければデータベースに追加
     if todo_name != "":
         new_todo = Todo(id=todo_id, user_id=uid, TodoName=todo_name, CreateTime=create_time, ClearTime='')
@@ -93,12 +94,14 @@ def add_todo():
         print('TodoName is empty')
 
     # 追加後のTodoリストを取得
-    updated_todos = Todo.query.filter_by(user_id=uid).all()
-
-    # dbの要素をprintで全て表示
-    print(Todo.query.all())
+    user_todos = Todo.query.filter_by(user_id=uid).all()
+    print(user_todos)
     
-    return jsonify([{'id': todo.id, 'TodoName': todo.TodoName, 'CreateTime': todo.CreateTime, 'ClearTime': todo.ClearTime} for todo in updated_todos])
+    if user_todos == []:
+        return jsonify({'message': 'Nothing'})
+    else:
+        print(Todo.query.all())
+        return jsonify([{'id': todo.id, 'TodoName': todo.TodoName, 'CreateTime': todo.CreateTime, 'ClearTime': todo.ClearTime} for todo in user_todos])
 
 #達成ボタンが押された時クリア時間をデータベースに登録する
 @app.route('/achieve_todo', methods=['PUT'])
