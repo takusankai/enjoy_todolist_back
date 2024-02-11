@@ -12,7 +12,7 @@ app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///todo.db'
 db = SQLAlchemy(app)
 
 class Todo(db.Model):
-    id = db.Column(db.Integer, primary_key=True)
+    id = db.Column(db.String, primary_key=True)
      # User モデルの uid に対する外部キー
     user_id = db.Column(db.String, db.ForeignKey('user.uid'), nullable=False) 
     TodoName = db.Column(db.String(50), nullable=False)
@@ -77,18 +77,24 @@ def get_recent_todos():
 @cross_origin()
 def add_todo():
     data = request.get_json()
+    key = data.get('key')
     uid = data.get('uid')
     todo_name = data.get('todo')
     create_time = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-    
-    new_todo = Todo(user_id=uid, TodoName=todo_name, CreateTime=create_time, ClearTime='')
-    db.session.add(new_todo)
-    db.session.commit()
+    if todo_name != '':
+        new_todo = Todo(id=key,user_id=uid, TodoName=todo_name, CreateTime=create_time, ClearTime='')
+        db.session.add(new_todo)
+        db.session.commit()
+
 
     # 追加後のTodoリストを取得
     updated_todos = Todo.query.filter_by(user_id=uid).all()
-
-    # dbの要素をprintで全て表示
+    print(updated_todos)
+    if updated_todos == []:
+        new_todo = Todo(id=key,user_id=uid, TodoName='test', CreateTime=create_time, ClearTime='')
+        db.session.add(new_todo)
+        db.session.commit()
+        updated_todos = Todo.query.filter_by(user_id=uid).all()
     print(Todo.query.all())
 
     return jsonify([{'id': todo.id, 'TodoName': todo.TodoName, 'CreateTime': todo.CreateTime, 'ClearTime': todo.ClearTime} for todo in updated_todos])
