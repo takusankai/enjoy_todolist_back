@@ -12,7 +12,7 @@ app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///todo.db'
 db = SQLAlchemy(app)
 
 class Todo(db.Model):
-    id = db.Column(db.Integer, primary_key=True)
+    id = db.Column(db.String, primary_key=True)
      # User モデルの uid に対する外部キー
     user_id = db.Column(db.String, db.ForeignKey('user.uid'), nullable=False) 
     TodoName = db.Column(db.String(50), nullable=False)
@@ -79,31 +79,46 @@ def add_todo():
     data = request.get_json()
     uid = data.get('uid')
     todo_name = data.get('todo')
+    todo_id = data.get('todo_id')
+    print("uid", uid, "todo_name", todo_name, "id", todo_id)
     create_time = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
     
-    new_todo = Todo(user_id=uid, TodoName=todo_name, CreateTime=create_time, ClearTime='')
-    db.session.add(new_todo)
-    db.session.commit()
+    # ""でなければデータベースに追加
+    if todo_name != "":
+        new_todo = Todo(id=todo_id, user_id=uid, TodoName=todo_name, CreateTime=create_time, ClearTime='')
+        db.session.add(new_todo)
+        db.session.commit()
+        print("Todo added successfully")
+    else:
+        print('TodoName is empty')
 
     # 追加後のTodoリストを取得
     updated_todos = Todo.query.filter_by(user_id=uid).all()
 
     # dbの要素をprintで全て表示
     print(Todo.query.all())
-
+    
     return jsonify([{'id': todo.id, 'TodoName': todo.TodoName, 'CreateTime': todo.CreateTime, 'ClearTime': todo.ClearTime} for todo in updated_todos])
 
 #達成ボタンが押された時クリア時間をデータベースに登録する
-@app.route('/clear_todo/<int:todo_id>', methods=['PUT'])
+@app.route('/achieve_todo', methods=['PUT'])
 @cross_origin()
-def clear_todo(todo_id):
-    todo = Todo.query.get(todo_id)
+def clear_todo():
+    data = request.get_json()
+    todo_id = data.get('todo_id')
+    print("todo_id", todo_id)
+    if not todo_id:
+        return jsonify({'message': 'Todo id is required'}), 400
+    todo = Todo.query.filter_by(id=todo_id).first()  # データベースからTodoオブジェクトを取得
+
     if todo:
         todo.is_completed = True
         todo.ClearTime = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
         db.session.commit()
+        print("Todo completed successfully", todo.ClearTime)
         return jsonify({'message': 'Todo completed successfully'})
     else:
+        print("Todo not found")
         return jsonify({'message': 'Todo not found'}), 404
     
 #自身の達成済みTodoリストをデータベースから取ってくる処理    
