@@ -7,7 +7,7 @@ from datetime import datetime
 app = Flask(__name__)
 CORS(app, resources={r"/*": {"origins": "http://localhost:3000"}}, supports_credentials=True)
 app.config['CORS_HEADERS'] = 'Content-Type'
-app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///todo.db'
+app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///todo2.db'
 
 db = SQLAlchemy(app)
 
@@ -82,7 +82,7 @@ def add_todo():
     todo_name = data.get('todo')
     create_time = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
     if todo_name != '':
-        new_todo = Todo(id=key,user_id=uid, TodoName=todo_name, CreateTime=create_time, ClearTime='')
+        new_todo = Todo(id=key, user_id=uid, TodoName=todo_name, CreateTime=create_time, ClearTime='')
         db.session.add(new_todo)
         db.session.commit()
 
