@@ -1,4 +1,11 @@
-# Enjoy_todolist_backend
+# Enjoy_todolist
+技育Camp マンスリーハッカソン vol.14 2024/2/2～2024/2/2
+
+このリポジトリはEnjoy_todolistのバックエンド部分です。
+
+todolistを登録し参照するだけでなく、自分のタスク達成を褒めてもらえたり他の人のタスク達成に評価が出来たりすることを目指した作品です。
+
+以下は環境構築の備考です。<br><br><br>
 
 ## venvで仮想環境を構築
 python -m venv env
